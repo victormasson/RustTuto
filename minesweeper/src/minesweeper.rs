@@ -6,18 +6,20 @@ use std::{
 
 pub type Position = (usize, usize);
 
+#[derive(Debug)]
 pub enum OpenResult {
     Mine,
     NoMine(u8),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Minesweeper {
     width: usize,
     height: usize,
     open_fields: HashSet<Position>,
     mines: HashSet<Position>,
     flagged_fields: HashSet<Position>,
+    lost: bool,
 }
 
 impl Display for Minesweeper {
@@ -27,7 +29,9 @@ impl Display for Minesweeper {
                 let pos = (x, y);
 
                 if !self.open_fields.contains(&pos) {
-                    if self.flagged_fields.contains(&pos) {
+                    if self.lost && self.mines.contains(&pos) {
+                        f.write_str("💣 ")?;
+                    } else if self.flagged_fields.contains(&pos) {
                         f.write_str("🚩 ")?;
                     } else {
                         f.write_str("🟦 ")?;
@@ -35,7 +39,13 @@ impl Display for Minesweeper {
                 } else if self.mines.contains(&pos) {
                     f.write_str("💣 ")?;
                 } else {
-                    write!(f, " {} ", self.neighbors_mines(pos))?;
+                    let mine_count = self.neighboring_mines(pos);
+
+                    if mine_count > 0 {
+                        write!(f, " {} ", mine_count)?;
+                    } else {
+                        f.write_str("⬜ ")?;
+                    }
                 }
             }
             f.write_char('\n')?;
@@ -60,6 +70,7 @@ impl Minesweeper {
                 mines
             },
             flagged_fields: HashSet::new(),
+            lost: false,
         }
     }
 
@@ -67,18 +78,19 @@ impl Minesweeper {
         let width = self.width;
         let height = self.height;
 
-        (x.min(1) - 1..=(x + 1).min(width - 1))
-            .flat_map(move |i| (y.min(1) - 1..=(y + 1).min(height - 1)).map(move |j| (i, j)))
+        (x.max(1) - 1..=(x + 1).min(width - 1))
+            .flat_map(move |i| (y.max(1) - 1..=(y + 1).min(height - 1)).map(move |j| (i, j)))
             .filter(move |&pos| pos != (x, y))
     }
 
-    fn neighbors_mines(&self, pos: Position) -> u8 {
+    fn neighboring_mines(&self, pos: Position) -> u8 {
         self.iter_neighbors(pos)
             .filter(|pos| self.mines.contains(pos))
             .count() as u8
     }
 
-    pub fn Open(&mut self, pos: Position) -> Option<OpenResult> {
+    #[cfg(test)]
+    pub fn open_test(&mut self, pos: Position) -> Option<OpenResult> {
         if self.flagged_fields.contains(&pos) {
             return None;
         }
@@ -91,8 +103,34 @@ impl Minesweeper {
         }
     }
 
+    pub fn open(&mut self, pos: Position) -> Option<OpenResult> {
+        if self.lost || self.open_fields.contains(&pos) || self.flagged_fields.contains(&pos) {
+            return None;
+        }
+
+        self.open_fields.insert(pos);
+
+        match self.mines.contains(&pos) {
+            true => {
+                self.lost = true;
+                Some(OpenResult::Mine)
+            }
+            false => {
+                let mine_count = self.neighboring_mines(pos);
+
+                if mine_count == 0 {
+                    for neighbor in self.iter_neighbors(pos) {
+                        self.open(neighbor);
+                    }
+                }
+
+                Some(OpenResult::NoMine(0))
+            }
+        }
+    }
+
     pub fn toggle_flag(&mut self, pos: Position) {
-        if self.open_fields.contains(&pos) {
+        if self.lost || self.open_fields.contains(&pos) {
             return;
         }
 
@@ -106,7 +144,9 @@ impl Minesweeper {
 
 #[cfg(test)]
 mod tests {
-    use crate::minesweeper::Minesweeper;
+    use std::sync::{Arc, Mutex};
+
+    use crate::minesweeper::{Minesweeper, Position};
 
     #[test]
     fn it_works() {
@@ -115,21 +155,38 @@ mod tests {
     }
 
     #[test]
-    fn create_minesweeper_test() {
-        let mut minesweeper = Minesweeper::new(10, 10, 10);
-        minesweeper.Open((5, 5));
-        minesweeper.Open((5, 6));
-        minesweeper.Open((5, 7));
+    fn open_minesweeper_test() {
+        let width = 10;
+        let height = 10;
+        let mut minesweeper = Arc::new(Mutex::new(Minesweeper::new(10, 10, 10)));
+        let minesweeper_copy = Arc::clone(&minesweeper);
 
-        minesweeper.Open((6, 5));
-        minesweeper.Open((6, 6));
-        minesweeper.Open((6, 7));
+        let a = (0..=width)
+            .flat_map(move |i| (0..=height).map(move |j| (i, j)))
+            .collect::<Vec<Position>>();
 
-        minesweeper.Open((7, 5));
-        minesweeper.Open((7, 6));
-        minesweeper.Open((7, 7));
+        (0..=width)
+            .flat_map(move |i| (0..=height).map(move |j| (i, j)))
+            .for_each(move |pos| {
+                let mut minesweeper_copy = minesweeper_copy.lock().unwrap();
+                minesweeper_copy.open_test(pos);
+            });
 
-        minesweeper.toggle_flag((6, 6));
+        let minesweeper = minesweeper.lock().unwrap();
+        let nb_mine = minesweeper.neighboring_mines((6, 6));
+
         println!("{}", minesweeper);
+        println!("nb mine {}", nb_mine)
+    }
+
+    #[test]
+    fn flag_and_try_to_open_minesweeper_test() {
+        let mut minesweeper = Minesweeper::new(10, 10, 10);
+        minesweeper.toggle_flag((6, 6));
+        let res = minesweeper.open_test((6, 6));
+
+        assert!(res.is_none());
+        println!("{}", minesweeper);
+        println!("{:#?}", res);
     }
 }

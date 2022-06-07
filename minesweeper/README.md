@@ -1,6 +1,6 @@
 # Minesweeper
 
-[here](https://www.youtube.com/watch?v=0ywizYLPV00&list=PLcK845XHyaAGoNNS9I6C9DSzv8gBxEPGK&index=1&t=947s)
+[here](https://youtu.be/0ywizYLPV00?list=PLcK845XHyaAGoNNS9I6C9DSzv8gBxEPGK&t=4035)
 
 Build for web
 

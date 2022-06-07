@@ -1,8 +1,14 @@
 mod minesweeper;
 mod random;
 
+use std::cell::RefCell;
+
 use minesweeper::*;
 use wasm_bindgen::prelude::*;
+
+thread_local! {
+    static MINESWEEPER: RefCell<Minesweeper> = RefCell::new(Minesweeper::new(10, 10, 15));
+}
 
 #[wasm_bindgen]
 extern "C" {
@@ -16,6 +22,10 @@ pub fn greet(name: &str) {
 
 #[wasm_bindgen(js_name = getState)]
 pub fn get_state() -> String {
-    let ms = Minesweeper::new(10, 10, 5);
-    ms.to_string()
+    MINESWEEPER.with(|ms| ms.borrow().to_string())
+}
+
+#[wasm_bindgen(js_name = openField)]
+pub fn open_field(x: usize, y: usize) {
+    MINESWEEPER.with(|ms| ms.borrow_mut().open((x, y)));
 }

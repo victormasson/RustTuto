@@ -5,18 +5,63 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-size: 200%;
+            font-family: 'Times New Roman', Times, serif;
+        }
+
+        .field {
+            text-decoration: none;
+            text-align: center;
+            width: 2.2rem;
+            height: 2.2rem;
+            line-height: 1.2rem;
+        }
+    </style>
     <title>Minesweeper</title>
 </head>
 
 <body>
     <div id="root"></div>
     <script type="module">
-        import init, { getState, greet } from "./pkg/minesweeper.js"
+        import init, { getState, openField, greet } from "./pkg/minesweeper.js"
 
         async function main() {
             await init();
 
-            console.log(getState());
+            render();
+        }
+
+        function render() {
+            let state = getState();
+            console.log(state);
+            let root = document.getElementById("root");
+
+            root.innerHTML = "";
+            let data = state.split("\n").map(row => row.trim().split(/\s+/));
+
+            root.style.display = "inline-grid";
+            root.style.gridTemplate = `repeat(${data.length}, auto) / repeat(${data[0].length}, auto)`;
+
+            for (let y = 0; y < data.length; y++) {
+                for (let x = 0; x < data[y].length; x++) {
+                    let element = document.createElement("a");
+                    element.classList.add("field");
+                    element.href = "#";
+                    element.innerText = data[y][x];
+
+                    element.addEventListener("click", evt => {
+                        evt.preventDefault();
+
+                        openField(x, y);
+
+                        render();
+                    })
+
+                    root.appendChild(element);
+                }
+            }
         }
 
         main();
