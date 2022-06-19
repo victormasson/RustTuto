@@ -18,8 +18,10 @@ pub struct Minesweeper {
     height: usize,
     open_fields: HashSet<Position>,
     mines: HashSet<Position>,
+    mine_count: usize,
     flagged_fields: HashSet<Position>,
     lost: bool,
+    first_opening: bool,
 }
 
 impl Display for Minesweeper {
@@ -61,17 +63,47 @@ impl Minesweeper {
             width,
             height,
             open_fields: HashSet::new(),
-            mines: {
-                let mut mines = HashSet::new();
-
-                while mines.len() < mine_count {
-                    mines.insert((random_range(0, width), random_range(0, height)));
-                }
-                mines
-            },
+            mines: Minesweeper::insert_mines_new(width, height, mine_count),
+            mine_count: mine_count,
             flagged_fields: HashSet::new(),
             lost: false,
+            first_opening: true,
         }
+    }
+
+    pub fn is_lost(&self) -> bool {
+        self.lost
+    }
+
+    pub fn is_first_opening(&self) -> bool {
+        self.first_opening
+    }
+
+    fn insert_mines_new(width: usize, height: usize, mine_count: usize) -> HashSet<(usize, usize)> {
+        let mut mines = HashSet::new();
+
+        while mines.len() < mine_count {
+            mines.insert((random_range(0, width), random_range(0, height)));
+        }
+        mines
+    }
+
+    fn insert_mines(&self, pos: Position) -> HashSet<(usize, usize)> {
+        let mut mines = HashSet::new();
+
+        while mines.len() < self.mine_count {
+            let p = (random_range(0, self.width), random_range(0, self.height));
+
+            let (x, y) = pos;
+
+            if !(x - 1..=x + 1)
+                .flat_map(move |i| (y - 1..=y + 1).map(move |j| (i, j)))
+                .any(move |(i, j)| (i, j) == p)
+            {
+                mines.insert(p);
+            }
+        }
+        mines
     }
 
     fn iter_neighbors(&self, (x, y): Position) -> impl Iterator<Item = Position> {
@@ -89,22 +121,34 @@ impl Minesweeper {
             .count() as u8
     }
 
-    #[cfg(test)]
-    pub fn open_test(&mut self, pos: Position) -> Option<OpenResult> {
-        if self.flagged_fields.contains(&pos) {
+    pub fn open(&mut self, pos: Position) -> Option<OpenResult> {
+        if self.first_opening {
+            if self.mines.contains(&pos) {
+                self.mines = self.insert_mines(pos);
+            }
+
+            self.first_opening = false;
+        }
+
+        if self.open_fields.contains(&pos) {
+            let mine_count = self.neighboring_mines(pos);
+            let flag_count = self
+                .iter_neighbors(pos)
+                .filter(|neighbor| self.flagged_fields.contains(neighbor))
+                .count() as u8;
+            if mine_count == flag_count {
+                for neighbor in self.iter_neighbors(pos) {
+                    if !self.flagged_fields.contains(&neighbor)
+                        && !self.open_fields.contains(&neighbor)
+                    {
+                        self.open(neighbor);
+                    }
+                }
+            }
             return None;
         }
 
-        self.open_fields.insert(pos);
-
-        match self.mines.contains(&pos) {
-            true => Some(OpenResult::Mine),
-            false => Some(OpenResult::NoMine(0)),
-        }
-    }
-
-    pub fn open(&mut self, pos: Position) -> Option<OpenResult> {
-        if self.lost || self.open_fields.contains(&pos) || self.flagged_fields.contains(&pos) {
+        if self.lost || self.flagged_fields.contains(&pos) {
             return None;
         }
 
@@ -120,7 +164,9 @@ impl Minesweeper {
 
                 if mine_count == 0 {
                     for neighbor in self.iter_neighbors(pos) {
-                        self.open(neighbor);
+                        if !self.flagged_fields.contains(&neighbor) {
+                            self.open(neighbor);
+                        }
                     }
                 }
 
@@ -169,7 +215,7 @@ mod tests {
             .flat_map(move |i| (0..=height).map(move |j| (i, j)))
             .for_each(move |pos| {
                 let mut minesweeper_copy = minesweeper_copy.lock().unwrap();
-                minesweeper_copy.open_test(pos);
+                minesweeper_copy.open(pos);
             });
 
         let minesweeper = minesweeper.lock().unwrap();
@@ -183,9 +229,18 @@ mod tests {
     fn flag_and_try_to_open_minesweeper_test() {
         let mut minesweeper = Minesweeper::new(10, 10, 10);
         minesweeper.toggle_flag((6, 6));
-        let res = minesweeper.open_test((6, 6));
+        let res = minesweeper.open((6, 6));
 
         assert!(res.is_none());
+        println!("{}", minesweeper);
+        println!("{:#?}", res);
+    }
+
+    #[test]
+    fn try_to_open_minesweeper_test() {
+        let mut minesweeper = Minesweeper::new(10, 10, 60);
+        let res = minesweeper.open((6, 6));
+
         println!("{}", minesweeper);
         println!("{:#?}", res);
     }

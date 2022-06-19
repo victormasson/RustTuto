@@ -9,14 +9,42 @@
         body {
             font-size: 200%;
             font-family: 'Times New Roman', Times, serif;
+            display: flex;
+        }
+
+        .button {
+            text-align: center;
+            height: auto;
+            width: auto;
+            font-size: 100%;
+            margin-right: 1rem;
+        }
+
+        .lost {
+            height: 2.2rem;
+            text-align: center;
+            color: red;
         }
 
         .field {
             text-decoration: none;
             text-align: center;
-            width: 2.2rem;
-            height: 2.2rem;
-            line-height: 1.2rem;
+        }
+
+        .header {
+            flex-direction: row;
+            display: flex;
+            margin-bottom: 1rem;
+        }
+
+        .main {
+            border: solid;
+            background-color: beige;
+            display: inline-grid;
+        }
+
+        .footer {
+            background-color: red;
         }
     </style>
     <title>Minesweeper</title>
@@ -25,46 +53,173 @@
 <body>
     <div id="root"></div>
     <script type="module">
-        import init, { getState, openField, greet } from "./pkg/minesweeper.js"
+        import init, { getState, openField, toggleFlag, createMinesweeper, greet, isLost, firstOpen } from "./pkg/minesweeper.js"
 
-        async function main() {
-            await init();
-
-            render();
+        var levels = [
+            {
+                'name': 'easy',
+                'data': [10, 10, 150]
+            },
+            {
+                'name': 'hard',
+                'data': [15, 15, 30]
+            },
+            {
+                'name': 'hell',
+                'data': [20, 20, 60]
+            },
+        ]
+        var state = {
+            level: levels[0]
         }
 
-        function render() {
-            let state = getState();
-            console.log(state);
-            let root = document.getElementById("root");
+        async function main() {
+            await init()
 
-            root.innerHTML = "";
-            let data = state.split("\n").map(row => row.trim().split(/\s+/));
+            start()
+        }
 
-            root.style.display = "inline-grid";
-            root.style.gridTemplate = `repeat(${data.length}, auto) / repeat(${data[0].length}, auto)`;
+        function start() {
+            let l = levels.filter(l => l.name === state.level.name)[0]
+            let [x, y, nb] = l.data
+            createMinesweeper(x, y, nb)
+
+            render()
+        }
+
+        function render_mineswweper(data) {
+            let div = document.createElement("div")
+            div.classList.add("main")
+            div.style.gridTemplate = `repeat(${data.length - 1}, auto) / repeat(${data[0].length}, auto)`
 
             for (let y = 0; y < data.length; y++) {
                 for (let x = 0; x < data[y].length; x++) {
-                    let element = document.createElement("a");
-                    element.classList.add("field");
-                    element.href = "#";
-                    element.innerText = data[y][x];
+                    let element = document.createElement("a")
+                    element.classList.add("field")
+                    element.href = "#"
+                    element.innerText = data[y][x]
 
                     element.addEventListener("click", evt => {
-                        evt.preventDefault();
+                        evt.preventDefault()
 
-                        openField(x, y);
+                        openField(x, y)
 
-                        render();
+                        render()
                     })
 
-                    root.appendChild(element);
+                    element.addEventListener("contextmenu", evt => {
+                        evt.preventDefault()
+
+                        toggleFlag(x, y)
+
+                        render()
+                    })
+
+                    div.appendChild(element)
                 }
             }
+            return div
         }
 
-        main();
+        function render_text(str) {
+            let element = document.createElement("div")
+
+            element.innerText = str
+
+            return element
+        }
+
+        function render_button_start() {
+            let element_button = document.createElement("input")
+            element_button.classList.add("button")
+            element_button.classList.add("padding-lw")
+            element_button.type = "button"
+            element_button.value = 'start'
+
+            element_button.addEventListener("click", evt => {
+                evt.preventDefault()
+
+                let [x, y, nb] = state.level.data
+                createMinesweeper(x, y, nb)
+
+                render()
+            })
+
+            return element_button
+        }
+
+        function render_head() {
+            let element = document.createElement("div")
+            element.classList.add("header")
+
+            for (const iterator of [
+                render_button_start(),
+                render_selected_level(),
+                render_text(firstOpen())
+            ]) {
+                element.appendChild(iterator)
+            }
+
+            return element
+        }
+
+        function render_text_lost() {
+            let element = document.createElement("p")
+            element.classList.add("lost")
+
+            element.innerText = 'You loose'
+
+            return element
+        }
+
+        function render_selected_level() {
+            let element = document.createElement("select")
+            element.name = "select-level"
+            element.title = "select-level"
+            element.classList.add("button")
+
+            for (const iterator of levels) {
+                let element_option = document.createElement("option")
+
+                if (state.level.name === iterator.name)
+                    element_option.selected = true
+
+                element_option.value = iterator.name
+                element_option.innerText = iterator.name
+
+                element.appendChild(element_option)
+            }
+
+            element.addEventListener("change", evt => {
+                evt.preventDefault()
+                state.level = levels.filter(l => l.name === element.value)[0]
+                start()
+            })
+
+            return element
+        }
+
+        function render() {
+            let root = document.getElementById("root")
+            root.innerHTML = ""
+
+            // --------- Head
+            root.appendChild(render_head())
+            // --------- Head
+
+            let state = getState()
+
+            let data = state.split("\n").map(row => row.trim().split(/\s+/))
+
+            root.appendChild(render_mineswweper(data))
+
+
+            if (isLost())
+                root.appendChild(render_text_lost())
+
+        }
+
+        main()
     </script>
 </body>
 
