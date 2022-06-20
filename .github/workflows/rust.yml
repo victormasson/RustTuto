@@ -28,14 +28,14 @@ jobs:
 #    - name: Run tests
 #      run: cd minesweeper/ && cargo test --verbose
     - name: Remove files
-      run: cd minesweeper/ && rm -r src && rm .gitignore && rm Cargo.toml && rm README.md
+      run: |
+        mkdir build
+        cp *.html build/
+        cp -R pkg build/pkg
+        rm build/pkg/.gitignore
     - name: "Deploy Github Pages"
       uses: JamesIves/github-pages-deploy-action@3.7.1
       with:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        BRANCH: gh-pages     # <- Branche sur laquelle seront commités les fichiers
-        FOLDER: minesweeper  # <- Dossier contenant notre documentation générée
-        clean: true
-        clean-exclude: |
-          index.html
-          pkg/*
+        BRANCH: gh-pages          # <- Branche sur laquelle seront commités les fichiers
+        FOLDER: minesweeper/build # <- Dossier contenant notre documentation générée
