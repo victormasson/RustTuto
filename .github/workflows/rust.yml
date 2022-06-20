@@ -1,0 +1,42 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: "Checkout"
+      uses: actions/checkout@v2
+      with:
+        persist-credentials: false
+    - uses: jetli/wasm-pack-action@v0.3.0
+      with:
+        # Optional version of wasm-pack to install(eg. 'v0.9.1', 'latest')
+        version: 'latest'
+    - name: Build
+      run: cd minesweeper/ && wasm-pack build --target web
+#    - name: Run tests
+#      run: cd minesweeper/ && cargo test --verbose
+    - name: Remove files
+      run: |
+        cd minesweeper/
+        mkdir build
+        cp *.html build/
+        cp -R pkg build/pkg
+        rm build/pkg/.gitignore
+    - name: "Deploy Github Pages"
+      uses: JamesIves/github-pages-deploy-action@3.7.1
+      with:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        BRANCH: gh-pages          # <- Branche sur laquelle seront commités les fichiers
+        FOLDER: minesweeper/build # <- Dossier contenant notre documentation générée
