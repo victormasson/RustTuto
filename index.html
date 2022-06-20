@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-size: 200%;
+            font-family: 'Times New Roman', Times, serif;
+            display: flex;
+        }
+
+        .button {
+            text-align: center;
+            height: auto;
+            width: auto;
+            font-size: 100%;
+            margin-right: 1rem;
+        }
+
+        .lost {
+            height: 2.2rem;
+            text-align: center;
+            color: red;
+        }
+
+        .win {
+            height: 2.2rem;
+            text-align: center;
+            color: yellowgreen;
+        }
+
+        .field {
+            text-decoration: none;
+            text-align: center;
+            align-self: center;
+            height: 2.2rem;
+            width: 2.2rem;
+        }
+
+        .square-box {
+            height: 2.2rem;
+            width: 2.2rem;
+            background-color: #0074ba;
+        }
+
+        .square-none {
+            height: 2.2rem;
+            width: 2.2rem;
+            background-color: #fff;
+        }
+
+        .triangle-mine {
+            width: 0;
+            height: 0;
+
+            border-top: 1rem solid transparent;
+            border-left: 1.5rem solid #555;
+            border-bottom: 1rem solid transparent;
+        }
+
+        .bomb {}
+
+        .header {
+            flex-direction: row;
+            display: flex;
+            margin-bottom: 1rem;
+        }
+
+        .main {
+            border: solid;
+            background-color: beige;
+            display: inline-grid;
+        }
+
+        .footer {
+            background-color: red;
+        }
+    </style>
+    <title>Minesweeper</title>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="module">
+        import init, { getState, openField, toggleFlag, createMinesweeper, greet, getStatus } from "./pkg/minesweeper.js"
+
+        var levels = [
+            {
+                'name': 'easy',
+                'data': [10, 10, 10]
+            },
+            {
+                'name': 'hard',
+                'data': [15, 15, 30]
+            },
+            {
+                'name': 'hell',
+                'data': [20, 20, 60]
+            },
+        ]
+        var state = {
+            level: levels[0]
+        }
+
+        async function main() {
+            await init()
+
+            start()
+        }
+
+        function start() {
+            let l = levels.filter(l => l.name === state.level.name)[0]
+            let [x, y, nb] = l.data
+            createMinesweeper(x, y, nb)
+
+            render()
+        }
+
+        function render_mineswweper(data) {
+            let div = document.createElement("div")
+            div.classList.add("main")
+            div.style.gridTemplate = `repeat(${data.length - 1}, auto) / repeat(${data[0].length}, auto)`
+
+            for (let y = 0; y < data.length; y++) {
+                for (let x = 0; x < data[y].length; x++) {
+                    let element = document.createElement("a")
+                    element.classList.add("field")
+                    element.href = "#"
+
+                    //square-box, square-none, triangle-mine, bomb
+                    switch (data[y][x]) {
+                        case 'x':
+                            element.classList.add("bomb")
+                            break;
+                        case 'O':
+                            element.classList.add("square-box")
+                            break;
+                        case '>':
+                            element.classList.add("triangle-mine")
+                            break;
+                        case 'C':
+                            element.classList.add("square-none")
+                            break;
+
+                        default:
+                            element.innerText = data[y][x]
+                            break;
+                    }
+
+
+
+                    element.addEventListener("click", evt => {
+                        evt.preventDefault()
+
+                        openField(x, y)
+
+                        render()
+                    })
+
+                    element.addEventListener("contextmenu", evt => {
+                        evt.preventDefault()
+
+                        toggleFlag(x, y)
+
+                        render()
+                    })
+
+                    div.appendChild(element)
+                }
+            }
+            return div
+        }
+
+        function render_text(str) {
+            let element = document.createElement("div")
+
+            element.innerText = str
+
+            return element
+        }
+
+        function render_button_start() {
+            let element_button = document.createElement("input")
+            element_button.classList.add("button")
+            element_button.classList.add("padding-lw")
+            element_button.type = "button"
+            element_button.value = 'start'
+
+            element_button.addEventListener("click", evt => {
+                evt.preventDefault()
+
+                let [x, y, nb] = state.level.data
+                createMinesweeper(x, y, nb)
+
+                render()
+            })
+
+            return element_button
+        }
+
+        function render_head() {
+            let element = document.createElement("div")
+            element.classList.add("header")
+
+            for (const iterator of [
+                render_button_start(),
+                render_selected_level()
+            ]) {
+                element.appendChild(iterator)
+            }
+
+            return element
+        }
+
+        function render_text_lost() {
+            let element = document.createElement("p")
+            element.classList.add("lost")
+
+            element.innerText = 'You loose'
+
+            return element
+        }
+
+        function render_text_win() {
+            let element = document.createElement("p")
+            element.classList.add("win")
+
+            element.innerText = 'You win !!'
+
+            return element
+        }
+
+        function render_selected_level() {
+            let element = document.createElement("select")
+            element.name = "select-level"
+            element.title = "select-level"
+            element.classList.add("button")
+
+            for (const iterator of levels) {
+                let element_option = document.createElement("option")
+
+                if (state.level.name === iterator.name)
+                    element_option.selected = true
+
+                element_option.value = iterator.name
+                element_option.innerText = iterator.name
+
+                element.appendChild(element_option)
+            }
+
+            element.addEventListener("change", evt => {
+                evt.preventDefault()
+                state.level = levels.filter(l => l.name === element.value)[0]
+                start()
+            })
+
+            return element
+        }
+
+        function render() {
+            let root = document.getElementById("root")
+            root.innerHTML = ""
+
+            // --------- Head
+            root.appendChild(render_head())
+            // --------- Head
+
+            let state = getState()
+
+            let data = state.split("\n").map(row => row.trim().split(/\s+/))
+
+            root.appendChild(render_mineswweper(data))
+
+            if (getStatus() === 3)
+                root.appendChild(render_text_lost())
+
+            if (getStatus() === 4)
+                root.appendChild(render_text_win())
+        }
+
+        main()
+    </script>
+</body>
+
+</html>
