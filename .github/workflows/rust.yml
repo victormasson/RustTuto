@@ -29,6 +29,7 @@ jobs:
 #      run: cd minesweeper/ && cargo test --verbose
     - name: Remove files
       run: |
+        cd minesweeper/
         mkdir build
         cp *.html build/
         cp -R pkg build/pkg
