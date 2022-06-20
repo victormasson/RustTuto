@@ -33,3 +33,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         BRANCH: gh-pages     # <- Branche sur laquelle seront commités les fichiers
         FOLDER: minesweeper  # <- Dossier contenant notre documentation générée
+        clean: true
+        clean-exclude: |
+          index.html
+          pkg/*
