@@ -1,0 +1,43 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: jetli/wasm-pack-action@v0.3.0
+      with:
+        # Optional version of wasm-pack to install(eg. 'v0.9.1', 'latest')
+        version: 'latest'
+    - name: Go to folder
+      run: cd minesweeper/
+    - name: Build
+      run: wasm-pack build --target web
+    - name: Run tests
+      run: cargo test --verbose
+    - name: Force push to destination branch
+      uses: ad-m/github-push-action@v0.5.0
+      with:
+        # Token for the repo
+        # Can be passed in using $\{{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        # Destination branch to push changes
+        branch: gh-pages
+        # Use force push to fully overwrite the destination branch
+        force: true
+    - name: "Deploy Github Pages"
+      uses: JamesIves/github-pages-deploy-action@3.7.1
+      with:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        BRANCH: gh-pages     # <- Branche sur laquelle seront commités les fichiers
+        FOLDER: .            # <- Dossier contenant notre documentation générée
