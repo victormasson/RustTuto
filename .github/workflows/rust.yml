@@ -19,10 +19,8 @@ jobs:
       with:
         # Optional version of wasm-pack to install(eg. 'v0.9.1', 'latest')
         version: 'latest'
-    - name: Go to folder
-      run: cd minesweeper/
     - name: Build
-      run: wasm-pack build --target web
+      run: cd minesweeper/ & wasm-pack build --target web
     - name: Run tests
       run: cargo test --verbose
     - name: Force push to destination branch
