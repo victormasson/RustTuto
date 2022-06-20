@@ -28,12 +28,7 @@ jobs:
 #    - name: Run tests
 #      run: cd minesweeper/ && cargo test --verbose
     - name: Remove files
-      run: |
-        cd minesweeper/
-        && rm -r src
-        && rm .gitignore
-        && rm Cargo.toml
-        && rm README.md
+      run: cd minesweeper/ && rm -r src && rm .gitignore && rm Cargo.toml && rm README.md
     - name: "Deploy Github Pages"
       uses: JamesIves/github-pages-deploy-action@3.7.1
       with:
