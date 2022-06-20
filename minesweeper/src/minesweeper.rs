@@ -1,4 +1,6 @@
-use crate::random::random_range;
+use wasm_bindgen::prelude::*;
+
+use crate::random::{calculate_mines, random_range};
 use std::{
     collections::HashSet,
     fmt::{Display, Write},
@@ -12,6 +14,15 @@ pub enum OpenResult {
     NoMine(u8),
 }
 
+#[wasm_bindgen]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum StatusGame {
+    FirstOpening = 1,
+    Playing = 2,
+    Lost = 3,
+    Win = 4,
+}
+
 #[derive(Debug, Clone)]
 pub struct Minesweeper {
     width: usize,
@@ -21,6 +32,7 @@ pub struct Minesweeper {
     mine_count: usize,
     flagged_fields: HashSet<Position>,
     lost: bool,
+    status: StatusGame,
     first_opening: bool,
 }
 
@@ -32,21 +44,21 @@ impl Display for Minesweeper {
 
                 if !self.open_fields.contains(&pos) {
                     if self.lost && self.mines.contains(&pos) {
-                        f.write_str("💣 ")?;
+                        f.write_str("x ")?; //💣
                     } else if self.flagged_fields.contains(&pos) {
-                        f.write_str("🚩 ")?;
+                        f.write_str("> ")?; //🚩
                     } else {
-                        f.write_str("🟦 ")?;
+                        f.write_str("O ")?; //🟦
                     }
                 } else if self.mines.contains(&pos) {
-                    f.write_str("💣 ")?;
+                    f.write_str("x ")?;
                 } else {
                     let mine_count = self.neighboring_mines(pos);
 
                     if mine_count > 0 {
                         write!(f, " {} ", mine_count)?;
                     } else {
-                        f.write_str("⬜ ")?;
+                        f.write_str("C ")?; //⬜
                     }
                 }
             }
@@ -63,29 +75,31 @@ impl Minesweeper {
             width,
             height,
             open_fields: HashSet::new(),
-            mines: Minesweeper::insert_mines_new(width, height, mine_count),
+            mines: Minesweeper::calculate_mines(width, height, mine_count),
             mine_count: mine_count,
             flagged_fields: HashSet::new(),
             lost: false,
+            status: StatusGame::FirstOpening,
             first_opening: true,
         }
     }
 
-    pub fn is_lost(&self) -> bool {
-        self.lost
+    pub fn get_status(&self) -> StatusGame {
+        self.status
     }
 
-    pub fn is_first_opening(&self) -> bool {
-        self.first_opening
+    pub fn insert_mines_new(&mut self, width: usize, height: usize, mine_count: usize) {
+        self.mines = calculate_mines(width, height, mine_count);
     }
 
-    fn insert_mines_new(width: usize, height: usize, mine_count: usize) -> HashSet<(usize, usize)> {
-        let mut mines = HashSet::new();
+    #[cfg(test)]
+    pub fn insert_mines_debug(&mut self, mines: HashSet<Position>) {
+        self.status = StatusGame::Playing;
+        self.mines = mines;
+    }
 
-        while mines.len() < mine_count {
-            mines.insert((random_range(0, width), random_range(0, height)));
-        }
-        mines
+    fn calculate_mines(width: usize, height: usize, mine_count: usize) -> HashSet<(usize, usize)> {
+        calculate_mines(width, height, mine_count)
     }
 
     fn insert_mines(&self, pos: Position) -> HashSet<(usize, usize)> {
@@ -106,6 +120,34 @@ impl Minesweeper {
         mines
     }
 
+    fn is_there_only_mines_left(&self) -> bool {
+        let width = self.width;
+        let height = self.height;
+
+        let all_map = (0..=width - 1)
+            .flat_map(move |i| (0..=height - 1).map(move |j| (i, j)))
+            .collect::<HashSet<Position>>();
+
+        println!("{} all_map", all_map.len());
+        println!("{} open_fields", self.open_fields.len());
+
+        let all_map_without_opened = all_map
+            .iter()
+            .filter(|&x| !&self.open_fields.contains(x))
+            .cloned()
+            .collect::<HashSet<(usize, usize)>>();
+
+        println!("{} all_map_without_opened", all_map_without_opened.len());
+
+        let mut set = all_map_without_opened;
+
+        for pos in &self.flagged_fields {
+            set.insert(*pos);
+        }
+
+        self.mines == set
+    }
+
     fn iter_neighbors(&self, (x, y): Position) -> impl Iterator<Item = Position> {
         let width = self.width;
         let height = self.height;
@@ -122,12 +164,12 @@ impl Minesweeper {
     }
 
     pub fn open(&mut self, pos: Position) -> Option<OpenResult> {
-        if self.first_opening {
+        if self.status == StatusGame::FirstOpening {
             if self.mines.contains(&pos) {
                 self.mines = self.insert_mines(pos);
             }
 
-            self.first_opening = false;
+            self.status = StatusGame::Playing;
         }
 
         if self.open_fields.contains(&pos) {
@@ -148,7 +190,10 @@ impl Minesweeper {
             return None;
         }
 
-        if self.lost || self.flagged_fields.contains(&pos) {
+        if self.status == StatusGame::Lost
+            || self.status == StatusGame::Win
+            || self.flagged_fields.contains(&pos)
+        {
             return None;
         }
 
@@ -156,7 +201,7 @@ impl Minesweeper {
 
         match self.mines.contains(&pos) {
             true => {
-                self.lost = true;
+                self.status = StatusGame::Lost;
                 Some(OpenResult::Mine)
             }
             false => {
@@ -170,13 +215,22 @@ impl Minesweeper {
                     }
                 }
 
+                if self.is_there_only_mines_left() {
+                    self.status = StatusGame::Win;
+
+                    return None;
+                }
+
                 Some(OpenResult::NoMine(0))
             }
         }
     }
 
     pub fn toggle_flag(&mut self, pos: Position) {
-        if self.lost || self.open_fields.contains(&pos) {
+        if self.status == StatusGame::Lost
+            || self.status == StatusGame::Win
+            || self.open_fields.contains(&pos)
+        {
             return;
         }
 
@@ -184,15 +238,22 @@ impl Minesweeper {
             self.flagged_fields.remove(&pos);
         } else {
             self.flagged_fields.insert(pos);
+
+            if self.is_there_only_mines_left() {
+                self.status = StatusGame::Win;
+            }
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, Mutex};
+    use std::{
+        collections::HashSet,
+        sync::{Arc, Mutex},
+    };
 
-    use crate::minesweeper::{Minesweeper, Position};
+    use crate::minesweeper::{Minesweeper, Position, StatusGame};
 
     #[test]
     fn it_works() {
@@ -239,7 +300,39 @@ mod tests {
     #[test]
     fn try_to_open_minesweeper_test() {
         let mut minesweeper = Minesweeper::new(10, 10, 60);
+
         let res = minesweeper.open((6, 6));
+
+        println!("{}", minesweeper);
+        println!("{:#?}", res);
+    }
+
+    #[test]
+    fn minesweeper_win_test() {
+        let mut minesweeper = Minesweeper::new(3, 3, 1);
+
+        let to_open = vec![
+            (0, 1),
+            (0, 2),
+            (1, 0),
+            (1, 1),
+            (1, 2),
+            (2, 0),
+            (2, 1),
+            (2, 2),
+        ];
+
+        let mines: HashSet<Position> = (vec![(0, 0)]).into_iter().collect();
+
+        minesweeper.insert_mines_debug(mines);
+
+        for pos in to_open {
+            minesweeper.open(pos);
+        }
+
+        let res = minesweeper.get_status();
+
+        assert_eq!(StatusGame::Win, res);
 
         println!("{}", minesweeper);
         println!("{:#?}", res);

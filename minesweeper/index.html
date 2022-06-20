@@ -26,10 +26,42 @@
             color: red;
         }
 
+        .win {
+            height: 2.2rem;
+            text-align: center;
+            color: yellowgreen;
+        }
+
         .field {
             text-decoration: none;
             text-align: center;
+            align-self: center;
+            height: 2.2rem;
+            width: 2.2rem;
         }
+
+        .square-box {
+            height: 2.2rem;
+            width: 2.2rem;
+            background-color: #0074ba;
+        }
+
+        .square-none {
+            height: 2.2rem;
+            width: 2.2rem;
+            background-color: #fff;
+        }
+
+        .triangle-mine {
+            width: 0;
+            height: 0;
+
+            border-top: 1rem solid transparent;
+            border-left: 1.5rem solid #555;
+            border-bottom: 1rem solid transparent;
+        }
+
+        .bomb {}
 
         .header {
             flex-direction: row;
@@ -53,12 +85,12 @@
 <body>
     <div id="root"></div>
     <script type="module">
-        import init, { getState, openField, toggleFlag, createMinesweeper, greet, isLost, firstOpen } from "./pkg/minesweeper.js"
+        import init, { getState, openField, toggleFlag, createMinesweeper, greet, getStatus } from "./pkg/minesweeper.js"
 
         var levels = [
             {
                 'name': 'easy',
-                'data': [10, 10, 150]
+                'data': [10, 10, 10]
             },
             {
                 'name': 'hard',
@@ -97,7 +129,28 @@
                     let element = document.createElement("a")
                     element.classList.add("field")
                     element.href = "#"
-                    element.innerText = data[y][x]
+
+                    //square-box, square-none, triangle-mine, bomb
+                    switch (data[y][x]) {
+                        case 'x':
+                            element.classList.add("bomb")
+                            break;
+                        case 'O':
+                            element.classList.add("square-box")
+                            break;
+                        case '>':
+                            element.classList.add("triangle-mine")
+                            break;
+                        case 'C':
+                            element.classList.add("square-none")
+                            break;
+
+                        default:
+                            element.innerText = data[y][x]
+                            break;
+                    }
+
+
 
                     element.addEventListener("click", evt => {
                         evt.preventDefault()
@@ -154,8 +207,7 @@
 
             for (const iterator of [
                 render_button_start(),
-                render_selected_level(),
-                render_text(firstOpen())
+                render_selected_level()
             ]) {
                 element.appendChild(iterator)
             }
@@ -168,6 +220,15 @@
             element.classList.add("lost")
 
             element.innerText = 'You loose'
+
+            return element
+        }
+
+        function render_text_win() {
+            let element = document.createElement("p")
+            element.classList.add("win")
+
+            element.innerText = 'You win !!'
 
             return element
         }
@@ -213,10 +274,11 @@
 
             root.appendChild(render_mineswweper(data))
 
-
-            if (isLost())
+            if (getStatus() === 3)
                 root.appendChild(render_text_lost())
 
+            if (getStatus() === 4)
+                root.appendChild(render_text_win())
         }
 
         main()

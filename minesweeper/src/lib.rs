@@ -40,12 +40,7 @@ pub fn toggle_flag(x: usize, y: usize) {
     MINESWEEPER.with(|ms| ms.borrow_mut().toggle_flag((x, y)));
 }
 
-#[wasm_bindgen(js_name = isLost)]
-pub fn is_lost() -> bool {
-    MINESWEEPER.with(|ms| ms.borrow().is_lost())
-}
-
-#[wasm_bindgen(js_name = firstOpen)]
-pub fn first_open() -> bool {
-    MINESWEEPER.with(|ms| ms.borrow().is_first_opening())
+#[wasm_bindgen(js_name = getStatus)]
+pub fn get_status() -> StatusGame {
+    MINESWEEPER.with(|ms| ms.borrow().get_status())
 }

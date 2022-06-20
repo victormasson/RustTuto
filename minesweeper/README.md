@@ -10,3 +10,10 @@ wasm-pack build --target web
 
 Run static server
 ```sfz```
+
+- :x: insert mine
+- flag field
+- open field
+- status game
+- first opening is safe
+- win if there is : **mines == all_map - opened_fields + flag_fields**
