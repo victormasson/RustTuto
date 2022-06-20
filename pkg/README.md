@@ -11,7 +11,7 @@ wasm-pack build --target web
 Run static server
 ```sfz```
 
-- :x: insert mine
+- insert mine
 - flag field
 - open field
 - status game

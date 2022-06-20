@@ -55,13 +55,22 @@
         .triangle-mine {
             width: 0;
             height: 0;
+            margin: 0 auto;
 
             border-top: 1rem solid transparent;
-            border-left: 1.5rem solid #555;
+            border-left: 1.5rem solid green;
             border-bottom: 1rem solid transparent;
         }
 
-        .bomb {}
+        .round-mine {
+            background-color: red;
+            width: 1rem;
+            height: 1rem;
+            border-radius: 50%;
+            max-width: 1.2em;
+            max-height: 1.2em;
+            margin: 0 auto;
+        }
 
         .header {
             flex-direction: row;
@@ -88,6 +97,10 @@
         import init, { getState, openField, toggleFlag, createMinesweeper, greet, getStatus } from "./pkg/minesweeper.js"
 
         var levels = [
+            {
+                'name': 'e',
+                'data': [3, 3, 1]
+            },
             {
                 'name': 'easy',
                 'data': [10, 10, 10]
@@ -133,7 +146,7 @@
                     //square-box, square-none, triangle-mine, bomb
                     switch (data[y][x]) {
                         case 'x':
-                            element.classList.add("bomb")
+                            element.classList.add("round-mine")
                             break;
                         case 'O':
                             element.classList.add("square-box")
@@ -149,8 +162,6 @@
                             element.innerText = data[y][x]
                             break;
                     }
-
-
 
                     element.addEventListener("click", evt => {
                         evt.preventDefault()
@@ -271,6 +282,7 @@
             let state = getState()
 
             let data = state.split("\n").map(row => row.trim().split(/\s+/))
+            data.pop()
 
             root.appendChild(render_mineswweper(data))
 
